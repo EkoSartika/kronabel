@@ -1,0 +1,26 @@
+==================================================================
+PAKET DISTRIBUSI RESMI: BEL OTOMATIS SEKOLAH v1.0.1 (WINDOWS 64-BIT)
+==================================================================
+Runtime Python : Python 3.8.10 x64 (Bundled Standalone - Bebas api-ms-win-core-path-l1-1-0.dll)
+Framework GUI  : PySide2 5.15.2.1 / Qt 5.15 LTS (Mendukung Windows 7 SP1, Windows 10, Windows 11)
+Runtime C/C++  : Microsoft Universal CRT (ucrtbase.dll + api-ms-win-crt-*.dll) & VC++ 140 Bundled
+Target OS      : Windows 7 SP1 (x64) / Windows 8.1 / Windows 10 / Windows 11
+Status Uji Win7: BELUM TERVERIFIKASI PADA MESIN FISIK WINDOWS 7 (Audit Biner & Transitif NT 6.1 LULUS, Uji Runtime di Windows Build Host LULUS)
+
+ARTEFAK DISTRIBUSI v1.0.1:
+1. Standalone Executable Binary:
+   Lokasi  : D:\BelOtomatisSekolah\dist\BelOtomatisSekolah\BelOtomatisSekolah.exe
+   Ukuran  : 1.15 MB (1209062 bytes)
+   SHA-256 : 3914a005b9fa11a1b2cda356330a0d7f0e4cfad44b87e04e1995ba358c0a6558
+
+2. Windows Setup Installer (BelOtomatisSekolah_Setup_v1.0.1.exe):
+   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Setup_v1.0.1.exe
+   Ukuran  : 36.95 MB (38742933 bytes)
+   SHA-256 : 111a56fa66d5407b51899082fa0227bb336bf02c509e3726fa5302cb7051e175
+
+3. Paket Portable (BelOtomatisSekolah_Portable_v1.0.1.zip):
+   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Portable_v1.0.1.zip
+   Ukuran  : 55.42 MB (58108011 bytes)
+   SHA-256 : c8288e1930a7e99bc6bda61af2bb20f6d1e86e2ad694e528f4bbffcc1b433a04
+
+==================================================================

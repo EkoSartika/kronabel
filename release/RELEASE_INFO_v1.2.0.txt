@@ -1,0 +1,31 @@
+==================================================================
+PAKET DISTRIBUSI RESMI: BEL OTOMATIS SEKOLAH v1.2.0 (WINDOWS 10/11 64-BIT)
+==================================================================
+Tanggal Build : 2026-10-29T14:09:56
+Versi Python  : 3.11.9 (Bundled Standalone - Tidak perlu install Python di PC tujuan)
+Framework GUI : PySide6 6.12.0 (Qt 6 Native)
+Arsitektur    : Windows 64-bit (x64)
+Target OS     : Windows 10 & Windows 11 64-bit (100% Offline Standalone)
+
+ARTEFAK DISTRIBUSI (SIAP INSTAL DI KOMPUTER LAIN):
+1. Standalone Executable Binary:
+   Lokasi  : D:\BelOtomatisSekolah\dist\BelOtomatisSekolah\BelOtomatisSekolah.exe
+   Ukuran  : 1.87 MB (1957117 bytes)
+   SHA-256 : 06fa0a2707a6dbe9e409d8f114556f03d4989593a21ee8187cae9217574cd4da
+
+2. Windows Setup Installer (.exe) [DIREKOMENDASIKAN UNTUK PC LAIN]:
+   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Setup_v1.2.0.exe
+   Ukuran  : 45.62 MB (47834629 bytes)
+   SHA-256 : 55ec5b658b39aadfbefab47d2b18ad866f7067ecd8ddd698641a5eed0658d187
+
+3. Paket Portable (.zip) [TINGGAL EKSTRAK TANPA INSTAL]:
+   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Portable_v1.2.0.zip
+   Ukuran  : 79.79 MB (83666198 bytes)
+   SHA-256 : 4dca928468b936588f2e4ca9cdb463c0d1f848e45cedf30d257ca44bffc07bd0
+
+DIREKTORI DATA PENGGUNA PERSISTEN (OTOMATIS DIBUAT DI PC TUJUAN):
+   %APPDATA%\BelOtomatisSekolah\data\bel_sekolah.db
+   %APPDATA%\BelOtomatisSekolah\sounds\
+   %APPDATA%\BelOtomatisSekolah\backups\
+   (Tidak membutuhkan Python, SQLite, atau file apa pun dari komputer pembuat)
+==================================================================
