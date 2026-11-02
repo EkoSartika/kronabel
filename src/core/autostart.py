@@ -15,7 +15,8 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 RUN_REG_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
-APP_REG_NAME = "BelOtomatisSekolah"
+APP_REG_NAME = "KRONABEL"
+LEGACY_APP_REG_NAME = "BelOtomatisSekolah"
 
 
 def get_recommended_autostart_command() -> str:
@@ -29,9 +30,10 @@ def get_recommended_autostart_command() -> str:
         return f'"{sys.executable}"'
 
     base_dir = Path(__file__).resolve().parent.parent.parent
-    dist_exe = base_dir / "dist" / "BelOtomatisSekolah" / "BelOtomatisSekolah.exe"
-    if dist_exe.exists():
-        return f'"{dist_exe}"'
+    for sub, exe in [("KRONABEL", "KRONABEL.exe"), ("BelOtomatisSekolah", "BelOtomatisSekolah.exe")]:
+        dist_exe = base_dir / "dist" / sub / exe
+        if dist_exe.exists():
+            return f'"{dist_exe}"'
 
     py_exe = Path(sys.executable)
     pythonw_candidate = py_exe.with_name("pythonw.exe")
@@ -48,11 +50,14 @@ def is_windows_autostart_enabled() -> bool:
         import winreg
 
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_REG_KEY, 0, winreg.KEY_READ) as key:
-            try:
-                val, _ = winreg.QueryValueEx(key, APP_REG_NAME)
-                return bool(val and str(val).strip())
-            except FileNotFoundError:
-                return False
+            for name in [APP_REG_NAME, LEGACY_APP_REG_NAME]:
+                try:
+                    val, _ = winreg.QueryValueEx(key, name)
+                    if bool(val and str(val).strip()):
+                        return True
+                except FileNotFoundError:
+                    continue
+            return False
     except Exception as e:
         logger.warning("Gagal membaca registry Windows autostart: %s", e)
         return False
@@ -78,11 +83,20 @@ def set_windows_autostart(enable: bool, command: Optional[str] = None) -> bool:
             exe_cmd = command or get_recommended_autostart_command()
             with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_REG_KEY, 0, winreg.KEY_SET_VALUE) as key:
                 winreg.SetValueEx(key, APP_REG_NAME, 0, winreg.REG_SZ, exe_cmd)
+                # Bersihkan registri autostart lama jika ada
+                try:
+                    winreg.DeleteValue(key, LEGACY_APP_REG_NAME)
+                except FileNotFoundError:
+                    pass
                 logger.info("Autostart Windows diaktifkan dengan perintah: %s", exe_cmd)
         else:
             try:
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_REG_KEY, 0, winreg.KEY_SET_VALUE) as key:
-                    winreg.DeleteValue(key, APP_REG_NAME)
+                    for name in [APP_REG_NAME, LEGACY_APP_REG_NAME]:
+                        try:
+                            winreg.DeleteValue(key, name)
+                        except FileNotFoundError:
+                            pass
                     logger.info("Autostart Windows dinonaktifkan.")
             except FileNotFoundError:
                 pass

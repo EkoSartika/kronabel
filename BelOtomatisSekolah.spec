@@ -73,7 +73,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='BelOtomatisSekolah',
+    name='KRONABEL',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -85,6 +85,7 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon=str(BASE_DIR / 'assets' / 'app_icon.ico'),
+    version=str(BASE_DIR / 'file_version_info.txt'),
 )
 
 coll = COLLECT(
@@ -95,5 +96,5 @@ coll = COLLECT(
     strip=False,
     upx=False,
     upx_exclude=[],
-    name='BelOtomatisSekolah',
+    name='KRONABEL',
 )

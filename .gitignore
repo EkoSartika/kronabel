@@ -91,6 +91,7 @@ credentials.*
 # ------------------------------------------------------------------
 release/*.exe
 release/*.zip
+release/BelOtomatisSekolah/
 
 # ------------------------------------------------------------------
 # [BARU] Aset audio & gambar duplikat di folder release

@@ -15,7 +15,9 @@ import time
 from pathlib import Path
 import pytest
 
-DIST_EXE = Path("D:/BelOtomatisSekolah/dist/BelOtomatisSekolah/BelOtomatisSekolah.exe")
+DIST_EXE_KRONABEL = Path("D:/BelOtomatisSekolah/dist/KRONABEL/KRONABEL.exe")
+DIST_EXE_LEGACY = Path("D:/BelOtomatisSekolah/dist/BelOtomatisSekolah/BelOtomatisSekolah.exe")
+DIST_EXE = DIST_EXE_KRONABEL if DIST_EXE_KRONABEL.exists() else DIST_EXE_LEGACY
 
 
 def test_executable_exists_and_clean_win10_11_dependencies():

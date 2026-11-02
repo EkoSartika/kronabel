@@ -54,7 +54,7 @@ class AdminWindow(QMainWindow):
         self.audio_player = audio_player
         self.auth = auth_service
 
-        self.setWindowTitle("Area Pengelola — Bel Otomatis Sekolah")
+        self.setWindowTitle("Area Pengelola — KRONABEL")
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, is_dwm_composition_enabled())
         self.setAttribute(Qt.WidgetAttribute.WA_QuitOnClose, False)

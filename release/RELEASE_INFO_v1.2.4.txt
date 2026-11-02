@@ -1,0 +1,32 @@
+==================================================================
+PAKET DISTRIBUSI RESMI: KRONABEL v1.2.4 (WINDOWS 10/11 64-BIT)
+Aplikasi Bel Otomatis Sekolah
+==================================================================
+Tanggal Build : 2026-11-02T16:33:12
+Versi Python  : 3.11.9 (Bundled Standalone - Tidak perlu install Python di PC tujuan)
+Framework GUI : PySide6 6.12.0 (Qt 6 Native)
+Arsitektur    : Windows 64-bit (x64)
+Target OS     : Windows 10 & Windows 11 64-bit (100% Offline Standalone)
+
+ARTEFAK DISTRIBUSI (SIAP INSTAL DI KOMPUTER LAIN):
+1. Standalone Executable Binary:
+   Lokasi  : D:\BelOtomatisSekolah\dist\KRONABEL\KRONABEL.exe
+   Ukuran  : 1.88 MB (1975155 bytes)
+   SHA-256 : 50238907b7944d68c6689580edfa35fb9890d6274e9902f89b045d5b5bbc356f
+
+2. Windows Setup Installer (.exe) [DIREKOMENDASIKAN UNTUK PC LAIN]:
+   Lokasi  : D:\BelOtomatisSekolah\release\KRONABEL_Setup_v1.2.4.exe
+   Ukuran  : 45.64 MB (47852146 bytes)
+   SHA-256 : d0357d41e21ba1d8b862bce1e539962d051274ecde6b5535fd5e436021f163ab
+
+3. Paket Portable (.zip) [TINGGAL EKSTRAK TANPA INSTAL]:
+   Lokasi  : D:\BelOtomatisSekolah\release\KRONABEL_Portable_v1.2.4.zip
+   Ukuran  : 79.80 MB (83677286 bytes)
+   SHA-256 : 82a82b4c6dbd282d382319e973de5c9bd0461a6d8ab7c4aba1eaea7fba6b7761
+
+DIREKTORI DATA PENGGUNA PERSISTEN (OTOMATIS DIBUAT DI PC TUJUAN):
+   %APPDATA%\KRONABEL\data\bel_sekolah.db
+   %APPDATA%\KRONABEL\sounds\
+   %APPDATA%\KRONABEL\backups\
+   (Kompatibel dan memigrasikan %APPDATA%\BelOtomatisSekolah otomatis)
+==================================================================

@@ -14,9 +14,16 @@ import zipfile
 from pathlib import Path
 import pytest
 
-SETUP_EXE = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Setup_v1.2.2.exe")
-PORTABLE_ZIP = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Portable_v1.2.2.zip")
-INSTALLED_EXE = Path("D:/BelOtomatisSekolah/test_isolated_install/BelOtomatisSekolah.exe")
+SETUP_EXE_124 = Path("D:/BelOtomatisSekolah/release/KRONABEL_Setup_v1.2.4.exe")
+PORTABLE_ZIP_124 = Path("D:/BelOtomatisSekolah/release/KRONABEL_Portable_v1.2.4.zip")
+SETUP_EXE_123 = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Setup_v1.2.3.exe")
+PORTABLE_ZIP_123 = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Portable_v1.2.3.zip")
+SETUP_EXE_122 = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Setup_v1.2.2.exe")
+PORTABLE_ZIP_122 = Path("D:/BelOtomatisSekolah/release/BelOtomatisSekolah_Portable_v1.2.2.zip")
+
+SETUP_EXE = SETUP_EXE_124 if SETUP_EXE_124.exists() else (SETUP_EXE_123 if SETUP_EXE_123.exists() else SETUP_EXE_122)
+PORTABLE_ZIP = PORTABLE_ZIP_124 if PORTABLE_ZIP_124.exists() else (PORTABLE_ZIP_123 if PORTABLE_ZIP_123.exists() else PORTABLE_ZIP_122)
+INSTALLED_EXE = Path("D:/BelOtomatisSekolah/test_isolated_install/KRONABEL.exe") if Path("D:/BelOtomatisSekolah/test_isolated_install/KRONABEL.exe").exists() else Path("D:/BelOtomatisSekolah/test_isolated_install/BelOtomatisSekolah.exe")
 
 
 def test_release_packages_exist_and_non_empty():
@@ -37,10 +44,15 @@ def test_extracted_portable_zip_launch(tmp_path: Path):
     with zipfile.ZipFile(PORTABLE_ZIP, "r") as zf:
         zf.extractall(extract_dir)
 
-    exe_path = extract_dir / "BelOtomatisSekolah" / "BelOtomatisSekolah.exe"
+    exe_candidates = [
+        extract_dir / "KRONABEL" / "KRONABEL.exe",
+        extract_dir / "BelOtomatisSekolah" / "BelOtomatisSekolah.exe",
+    ]
+    exe_path = next((p for p in exe_candidates if p.exists()), exe_candidates[0])
+    app_folder = exe_path.parent
     assert exe_path.exists(), f"Executable tidak ditemukan setelah ekstraksi ZIP: {exe_path}"
-    assert (extract_dir / "BelOtomatisSekolah" / "_internal" / "python311.dll").exists()
-    assert not (extract_dir / "BelOtomatisSekolah" / "python38.dll").exists()
+    assert (app_folder / "_internal" / "python311.dll").exists()
+    assert not (app_folder / "python38.dll").exists()
 
     isolated_data_dir = tmp_path / "portable_appdata"
     isolated_data_dir.mkdir(parents=True, exist_ok=True)

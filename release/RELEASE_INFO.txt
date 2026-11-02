@@ -1,7 +1,8 @@
 ==================================================================
-PAKET DISTRIBUSI RESMI: BEL OTOMATIS SEKOLAH v1.2.2 (WINDOWS 10/11 64-BIT)
+PAKET DISTRIBUSI RESMI: KRONABEL v1.2.4 (WINDOWS 10/11 64-BIT)
+Aplikasi Bel Otomatis Sekolah
 ==================================================================
-Tanggal Build : 2026-10-29T15:33:04
+Tanggal Build : 2026-11-02T16:33:12
 Versi Python  : 3.11.9 (Bundled Standalone - Tidak perlu install Python di PC tujuan)
 Framework GUI : PySide6 6.12.0 (Qt 6 Native)
 Arsitektur    : Windows 64-bit (x64)
@@ -9,23 +10,23 @@ Target OS     : Windows 10 & Windows 11 64-bit (100% Offline Standalone)
 
 ARTEFAK DISTRIBUSI (SIAP INSTAL DI KOMPUTER LAIN):
 1. Standalone Executable Binary:
-   Lokasi  : D:\BelOtomatisSekolah\dist\BelOtomatisSekolah\BelOtomatisSekolah.exe
-   Ukuran  : 1.87 MB (1965768 bytes)
-   SHA-256 : ec253605ccc2b46483806570602286ed41582d6b7aabca703b7f3993ecff4bb0
+   Lokasi  : D:\BelOtomatisSekolah\dist\KRONABEL\KRONABEL.exe
+   Ukuran  : 1.88 MB (1975155 bytes)
+   SHA-256 : 50238907b7944d68c6689580edfa35fb9890d6274e9902f89b045d5b5bbc356f
 
 2. Windows Setup Installer (.exe) [DIREKOMENDASIKAN UNTUK PC LAIN]:
-   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Setup_v1.2.2.exe
-   Ukuran  : 45.63 MB (47842113 bytes)
-   SHA-256 : c1a6275c94533f54b8fca069de453a34b2c10a3aedb8f63450acbeda4dc72ae0
+   Lokasi  : D:\BelOtomatisSekolah\release\KRONABEL_Setup_v1.2.4.exe
+   Ukuran  : 45.64 MB (47852146 bytes)
+   SHA-256 : d0357d41e21ba1d8b862bce1e539962d051274ecde6b5535fd5e436021f163ab
 
 3. Paket Portable (.zip) [TINGGAL EKSTRAK TANPA INSTAL]:
-   Lokasi  : D:\BelOtomatisSekolah\release\BelOtomatisSekolah_Portable_v1.2.2.zip
-   Ukuran  : 79.80 MB (83673779 bytes)
-   SHA-256 : a8f693c6ab2dd5c28a55c05231758be749050b2aae9c8ccd221761868d0f8004
+   Lokasi  : D:\BelOtomatisSekolah\release\KRONABEL_Portable_v1.2.4.zip
+   Ukuran  : 79.80 MB (83677286 bytes)
+   SHA-256 : 82a82b4c6dbd282d382319e973de5c9bd0461a6d8ab7c4aba1eaea7fba6b7761
 
 DIREKTORI DATA PENGGUNA PERSISTEN (OTOMATIS DIBUAT DI PC TUJUAN):
-   %APPDATA%\BelOtomatisSekolah\data\bel_sekolah.db
-   %APPDATA%\BelOtomatisSekolah\sounds\
-   %APPDATA%\BelOtomatisSekolah\backups\
-   (Tidak membutuhkan Python, SQLite, atau file apa pun dari komputer pembuat)
+   %APPDATA%\KRONABEL\data\bel_sekolah.db
+   %APPDATA%\KRONABEL\sounds\
+   %APPDATA%\KRONABEL\backups\
+   (Kompatibel dan memigrasikan %APPDATA%\BelOtomatisSekolah otomatis)
 ==================================================================

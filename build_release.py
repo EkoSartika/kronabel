@@ -1,11 +1,11 @@
 """
-Skrip Otomatisasi Build Release & Installer Bel Otomatis Sekolah (Windows 10 & Windows 11).
+Skrip Otomatisasi Build Release & Installer KRONABEL (Windows 10 & Windows 11).
 Konfigurasi Resmi: Python 3.11 + PySide6 (Qt 6).
 1. Memastikan isolasi lingkungan Python 3.11 + PySide6 (bebas dari Python 3.8 / PySide2).
-2. Menjalankan PyInstaller dengan BelOtomatisSekolah.spec.
-3. Memverifikasi struktur direktori dist/BelOtomatisSekolah dan kemurnian dependensi biner.
-4. Mengompilasi installer Windows (BelOtomatisSekolah_Setup_v1.2.0.exe) menggunakan Inno Setup Compiler (ISCC.exe).
-5. Membuat paket Portable ZIP (BelOtomatisSekolah_Portable_v1.2.0.zip).
+2. Menjalankan PyInstaller dengan BelOtomatisSekolah.spec (menghasilkan dist/KRONABEL/KRONABEL.exe).
+3. Memverifikasi struktur direktori dist/KRONABEL dan kemurnian dependensi biner.
+4. Mengompilasi installer Windows (KRONABEL_Setup_v1.2.4.exe) menggunakan Inno Setup Compiler (ISCC.exe).
+5. Membuat paket Portable ZIP (KRONABEL_Portable_v1.2.4.zip).
 6. Menghasilkan ringkasan artefak distribusi dan checksum SHA-256.
 """
 
@@ -19,10 +19,10 @@ import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.4"
 
 DIST_DIR = BASE_DIR / "dist"
-BUILD_DIR = BASE_DIR / "build" / "BelOtomatisSekolah"
+BUILD_DIR = BASE_DIR / "build" / "KRONABEL"
 RELEASE_DIR = BASE_DIR / "release"
 SPEC_FILE = BASE_DIR / "BelOtomatisSekolah.spec"
 ISS_FILE = BASE_DIR / "installer" / "BelOtomatisSekolah.iss"
@@ -85,24 +85,25 @@ def sync_bundled_sounds() -> None:
     assets_sounds.mkdir(parents=True, exist_ok=True)
     appdata = os.environ.get("APPDATA")
     if appdata:
-        user_sounds = Path(appdata) / "BelOtomatisSekolah" / "sounds"
-        if user_sounds.exists():
-            copied = 0
-            for audio_file in user_sounds.glob("*.*"):
-                if audio_file.suffix.lower() in (".mp3", ".wav"):
-                    dst = assets_sounds / audio_file.name
-                    if not dst.exists() or dst.stat().st_size != audio_file.stat().st_size:
-                        shutil.copy2(audio_file, dst)
-                        copied += 1
-            if copied:
-                print(f"Disinkronkan {copied} berkas audio bawaan ke {assets_sounds}")
+        copied = 0
+        for folder_name in ["KRONABEL", "BelOtomatisSekolah"]:
+            user_sounds = Path(appdata) / folder_name / "sounds"
+            if user_sounds.exists():
+                for audio_file in user_sounds.glob("*.*"):
+                    if audio_file.suffix.lower() in (".mp3", ".wav"):
+                        dst = assets_sounds / audio_file.name
+                        if not dst.exists() or dst.stat().st_size != audio_file.stat().st_size:
+                            shutil.copy2(audio_file, dst)
+                            copied += 1
+        if copied:
+            print(f"Disinkronkan {copied} berkas audio bawaan ke {assets_sounds}")
 
 
 def run_pyinstaller() -> bool:
     sync_bundled_sounds()
     print(f"\n[1/4] Menjalankan PyInstaller (Python 3.11 + PySide6) untuk v{APP_VERSION}...")
 
-    dist_app = DIST_DIR / "BelOtomatisSekolah"
+    dist_app = DIST_DIR / "KRONABEL"
     if dist_app.exists():
         shutil.rmtree(dist_app)
     if BUILD_DIR.exists():
@@ -126,7 +127,7 @@ def run_pyinstaller() -> bool:
         print("ERROR: PyInstaller gagal dengan kode:", res.returncode)
         return False
 
-    exe_path = dist_app / "BelOtomatisSekolah.exe"
+    exe_path = dist_app / "KRONABEL.exe"
     if not exe_path.exists():
         print("ERROR: Berkas executable tidak ditemukan di:", exe_path)
         return False
@@ -138,13 +139,13 @@ def run_pyinstaller() -> bool:
 
 def verify_dist_structure() -> bool:
     print("\n[2/4] Memverifikasi integritas folder dist & isolasi dependensi Windows 10/11...")
-    dist_app = DIST_DIR / "BelOtomatisSekolah"
-    exe_file = dist_app / "BelOtomatisSekolah.exe"
+    dist_app = DIST_DIR / "KRONABEL"
+    exe_file = dist_app / "KRONABEL.exe"
     assets_folder = dist_app / "assets"
     internal_dir = dist_app / "_internal"
 
     if not exe_file.exists():
-        print("ERROR: BelOtomatisSekolah.exe tidak ada di dist.")
+        print("ERROR: KRONABEL.exe tidak ada di dist.")
         return False
 
     if not assets_folder.exists() or not (assets_folder / "app_icon.png").exists():
@@ -199,7 +200,7 @@ def run_inno_setup() -> Path | None:
         print("ERROR: Kompilasi Inno Setup gagal dengan kode:", res.returncode)
         return None
 
-    installer_exe = RELEASE_DIR / f"BelOtomatisSekolah_Setup_v{APP_VERSION}.exe"
+    installer_exe = RELEASE_DIR / f"KRONABEL_Setup_v{APP_VERSION}.exe"
     if installer_exe.exists():
         size_mb = installer_exe.stat().st_size / (1024 * 1024)
         print(f"SUKSES: Installer Windows berhasil dibuat di: {installer_exe} ({size_mb:.2f} MB)")
@@ -210,11 +211,11 @@ def run_inno_setup() -> Path | None:
 def create_portable_zip() -> Path | None:
     print("\n[3.5/4] Membuat Paket Portable ZIP (Siap Copy ke Flashdisk / Komputer Lain)...")
     RELEASE_DIR.mkdir(parents=True, exist_ok=True)
-    dist_app = DIST_DIR / "BelOtomatisSekolah"
+    dist_app = DIST_DIR / "KRONABEL"
     if not dist_app.exists():
         return None
-    zip_base = RELEASE_DIR / f"BelOtomatisSekolah_Portable_v{APP_VERSION}"
-    archive_path = shutil.make_archive(str(zip_base), "zip", root_dir=str(DIST_DIR), base_dir="BelOtomatisSekolah")
+    zip_base = RELEASE_DIR / f"KRONABEL_Portable_v{APP_VERSION}"
+    archive_path = shutil.make_archive(str(zip_base), "zip", root_dir=str(DIST_DIR), base_dir="KRONABEL")
     out_zip = Path(archive_path)
     if out_zip.exists():
         size_mb = out_zip.stat().st_size / (1024 * 1024)
@@ -235,7 +236,8 @@ def generate_release_summary(installer_path: Path | None, portable_zip: Path | N
 
     lines = [
         "==================================================================",
-        f"PAKET DISTRIBUSI RESMI: BEL OTOMATIS SEKOLAH v{APP_VERSION} (WINDOWS 10/11 64-BIT)",
+        f"PAKET DISTRIBUSI RESMI: KRONABEL v{APP_VERSION} (WINDOWS 10/11 64-BIT)",
+        "Aplikasi Bel Otomatis Sekolah",
         "==================================================================",
         f"Tanggal Build : {build_time}",
         f"Versi Python  : {py_ver} (Bundled Standalone - Tidak perlu install Python di PC tujuan)",
@@ -246,7 +248,7 @@ def generate_release_summary(installer_path: Path | None, portable_zip: Path | N
         "ARTEFAK DISTRIBUSI (SIAP INSTAL DI KOMPUTER LAIN):",
     ]
 
-    exe_file = DIST_DIR / "BelOtomatisSekolah" / "BelOtomatisSekolah.exe"
+    exe_file = DIST_DIR / "KRONABEL" / "KRONABEL.exe"
     if exe_file.exists():
         size_mb = exe_file.stat().st_size / (1024 * 1024)
         checksum = calculate_sha256(exe_file)
@@ -272,10 +274,10 @@ def generate_release_summary(installer_path: Path | None, portable_zip: Path | N
         lines.append(f"   SHA-256 : {checksum}")
 
     lines.append("\nDIREKTORI DATA PENGGUNA PERSISTEN (OTOMATIS DIBUAT DI PC TUJUAN):")
-    lines.append("   %APPDATA%\\BelOtomatisSekolah\\data\\bel_sekolah.db")
-    lines.append("   %APPDATA%\\BelOtomatisSekolah\\sounds\\")
-    lines.append("   %APPDATA%\\BelOtomatisSekolah\\backups\\")
-    lines.append("   (Tidak membutuhkan Python, SQLite, atau file apa pun dari komputer pembuat)")
+    lines.append("   %APPDATA%\\KRONABEL\\data\\bel_sekolah.db")
+    lines.append("   %APPDATA%\\KRONABEL\\sounds\\")
+    lines.append("   %APPDATA%\\KRONABEL\\backups\\")
+    lines.append("   (Kompatibel dan memigrasikan %APPDATA%\\BelOtomatisSekolah otomatis)")
     lines.append("==================================================================")
 
     content = "\n".join(lines)

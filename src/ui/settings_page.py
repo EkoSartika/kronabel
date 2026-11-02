@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtMultimedia import QMediaDevices
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -38,7 +39,7 @@ from src.core.autostart import (
     is_windows_autostart_enabled,
     set_windows_autostart,
 )
-from src.services.audio_player import AudioPlayer
+from src.services.audio_player import AudioPlayer, device_id_to_str
 from src.services.backup_service import BackupService
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ class SettingsPage(QWidget):
         self.profile_repo = profile_repo or ProfileRepository(db)
         self.settings_repo = SettingsRepository(db)
         self.backup_service = BackupService(db)
+
+        # Hubungkan sinyal perubahan perangkat audio jika audio_player tersedia
+        if self.audio_player:
+            self.audio_player.audio_devices_changed.connect(self._on_devices_changed_signal)
+            self.audio_player.audio_device_switched.connect(self._update_device_info_label)
 
         self._is_loading = True
         self._setup_ui()
@@ -93,9 +99,45 @@ class SettingsPage(QWidget):
         title_audio.setStyleSheet("font-size: 15px; font-weight: 700; color: #0f172a;")
         layout_audio.addWidget(title_audio)
 
-        # Volume Master
+        # 1.A PENGATURAN PERANGKAT OUTPUT AUDIO
+        dev_label = QLabel("Perangkat Output Audio (Speaker / Headphone):")
+        dev_label.setStyleSheet("font-weight: 600; color: #1e293b; font-size: 13px; margin-top: 4px;")
+        layout_audio.addWidget(dev_label)
+
+        dev_row = QHBoxLayout()
+        dev_row.setSpacing(10)
+
+        self.cmb_audio_device = QComboBox()
+        self.cmb_audio_device.setStyleSheet(
+            "padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 6px; background-color: #ffffff; color: #0f172a; font-size: 13px;"
+        )
+        self.cmb_audio_device.currentIndexChanged.connect(self._on_audio_device_changed)
+        dev_row.addWidget(self.cmb_audio_device, 1)
+
+        self.btn_refresh_devices = QPushButton("Segarkan Perangkat")
+        self.btn_refresh_devices.setStyleSheet(
+            "background-color: #f1f5f9; color: #0f172a; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 14px; font-size: 13px;"
+        )
+        self.btn_refresh_devices.clicked.connect(self._on_refresh_devices_clicked)
+        dev_row.addWidget(self.btn_refresh_devices)
+
+        self.btn_test_audio = QPushButton("Tes Suara")
+        self.btn_test_audio.setStyleSheet(
+            "background-color: #0284c7; color: #ffffff; font-weight: 600; border: none; border-radius: 6px; padding: 6px 16px; font-size: 13px;"
+        )
+        self.btn_test_audio.clicked.connect(self._test_audio_playback)
+        dev_row.addWidget(self.btn_test_audio)
+
+        layout_audio.addLayout(dev_row)
+
+        self.lbl_device_info = QLabel()
+        self.lbl_device_info.setStyleSheet("color: #64748b; font-size: 12px; margin-bottom: 6px;")
+        self.lbl_device_info.setWordWrap(True)
+        layout_audio.addWidget(self.lbl_device_info)
+
+        # 1.B VOLUME MASTER
         vol_label = QLabel("Volume Suara Master:")
-        vol_label.setStyleSheet("font-weight: 600; color: #1e293b; font-size: 13px;")
+        vol_label.setStyleSheet("font-weight: 600; color: #1e293b; font-size: 13px; margin-top: 4px;")
         layout_audio.addWidget(vol_label)
 
         vol_row = QHBoxLayout()
@@ -130,13 +172,6 @@ class SettingsPage(QWidget):
         self.lbl_volume_val = QLabel("80%")
         self.lbl_volume_val.setStyleSheet("font-weight: 700; color: #0284c7; min-width: 45px;")
         vol_row.addWidget(self.lbl_volume_val)
-
-        btn_test_vol = QPushButton("Tes Suara")
-        btn_test_vol.setStyleSheet(
-            "background-color: #f1f5f9; color: #0284c7; font-weight: 600; border: 1px solid #cbd5e1; border-radius: 6px; padding: 4px 12px;"
-        )
-        btn_test_vol.clicked.connect(self._test_audio_volume)
-        vol_row.addWidget(btn_test_vol)
 
         layout_audio.addLayout(vol_row)
 
@@ -324,7 +359,10 @@ class SettingsPage(QWidget):
 
     def load_settings(self) -> None:
         """Memuat seluruh nilai preferensi dari database dan sistem."""
-        # 1. Volume
+        # 1. Perangkat Output Audio
+        self._populate_audio_devices()
+
+        # 2. Volume
         vol_str = self.settings_repo.get("volume", "80")
         try:
             vol_val = max(0, min(100, int(vol_str)))
@@ -335,20 +373,20 @@ class SettingsPage(QWidget):
         if self.audio_player:
             self.audio_player.set_volume(vol_val)
 
-        # 2. Kebijakan saat audio sibuk
+        # 3. Kebijakan saat audio sibuk
         busy_policy = self.settings_repo.get("playback_busy_policy", "reject")
         idx_busy = self.cmb_busy_policy.findData(busy_policy)
         if idx_busy >= 0:
             self.cmb_busy_policy.setCurrentIndex(idx_busy)
 
-        # 3. Konfirmasi manual bell
+        # 4. Konfirmasi manual bell
         confirm_str = self.settings_repo.get("confirm_manual_bell", "true")
         self.chk_confirm_manual.setChecked(confirm_str.lower() != "false")
 
-        # 4. Profil Aktif
+        # 5. Profil Aktif
         self.refresh_profiles()
 
-        # 5. Windows Autostart
+        # 6. Windows Autostart
         self.chk_autostart.setChecked(is_windows_autostart_enabled())
 
     def refresh_profiles(self) -> None:
@@ -368,6 +406,43 @@ class SettingsPage(QWidget):
             self.cmb_profiles.setCurrentIndex(selected_idx)
         self.cmb_profiles.blockSignals(False)
 
+    def _populate_audio_devices(self) -> None:
+        """Memperbarui daftar perangkat output audio pada combo box pilihan perangkat."""
+        self.cmb_audio_device.blockSignals(True)
+        self.cmb_audio_device.clear()
+
+        # Opsi 0: Otomatis mengikuti output Windows
+        self.cmb_audio_device.addItem("🔊 Otomatis mengikuti output Windows (default)", "auto")
+
+        current_mode = "auto"
+        selected_id = ""
+        if self.audio_player:
+            current_mode = self.audio_player.get_output_mode()
+            selected_id = self.audio_player.get_selected_device_id()
+            devices = self.audio_player.get_available_output_devices()
+            default_dev = self.audio_player.get_default_output_device()
+            default_id = device_id_to_str(default_dev)
+        else:
+            current_mode = self.settings_repo.get("audio_output_mode", "auto")
+            selected_id = self.settings_repo.get("audio_output_device_id", "")
+            devices = [d for d in QMediaDevices.audioOutputs() if not d.isNull()]
+            default_dev = QMediaDevices.defaultAudioOutput()
+            default_id = device_id_to_str(default_dev)
+
+        active_index = 0
+        for idx, dev in enumerate(devices, start=1):
+            dev_id = device_id_to_str(dev)
+            is_def = (dev_id == default_id) or dev.isDefault()
+            label = f"🔈 {dev.description()}" + (" [Default Windows]" if is_def else "")
+            self.cmb_audio_device.addItem(label, dev_id)
+
+            if current_mode == "manual" and dev_id == selected_id:
+                active_index = idx
+
+        self.cmb_audio_device.setCurrentIndex(active_index)
+        self.cmb_audio_device.blockSignals(False)
+        self._update_device_info_label()
+
     def _on_volume_changed(self, value: int) -> None:
         self.lbl_volume_val.setText(f"{value}%")
         if not self._is_loading:
@@ -375,35 +450,126 @@ class SettingsPage(QWidget):
             if self.audio_player:
                 self.audio_player.set_volume(value)
 
-    def _test_audio_volume(self) -> None:
-        """Menguji suara bel singkat untuk memverifikasi volume."""
+    def _on_audio_device_changed(self, index: int) -> None:
+        """Handler ketika operator mengubah pilihan perangkat output audio."""
+        if self._is_loading:
+            return
+        data = self.cmb_audio_device.currentData()
+        if data == "auto":
+            if self.audio_player:
+                self.audio_player.set_output_mode("auto")
+            else:
+                self.settings_repo.set("audio_output_mode", "auto")
+                self.settings_repo.set("audio_output_device_id", "")
+                self.settings_repo.set("audio_output_device_name", "")
+        else:
+            dev_id = str(data)
+            dev_name = self.cmb_audio_device.currentText().replace("🔈 ", "").replace(" [Default Windows]", "").strip()
+            if self.audio_player:
+                self.audio_player.set_output_mode("manual", device_id=dev_id, device_name=dev_name)
+            else:
+                self.settings_repo.set("audio_output_mode", "manual")
+                self.settings_repo.set("audio_output_device_id", dev_id)
+                self.settings_repo.set("audio_output_device_name", dev_name)
+
+        self._update_device_info_label()
+
+    def _on_refresh_devices_clicked(self) -> None:
+        """Handler tombol Segarkan Perangkat untuk memindai ulang perangkat audio fisik Windows."""
+        if self.audio_player:
+            self.audio_player.refresh_audio_device()
+        self._populate_audio_devices()
+        QMessageBox.information(
+            self,
+            "Segarkan Perangkat",
+            "Daftar perangkat output audio berhasil dipindai dan diperbarui dari sistem Windows.",
+        )
+
+    def _on_devices_changed_signal(self) -> None:
+        """Handler sinyal audio_devices_changed saat sistem Windows mendeteksi koneksi/pelepasan jack audio."""
+        self._populate_audio_devices()
+
+    def _update_device_info_label(self, device_name: str = "") -> None:
+        """Menampilkan status aktif perutean perangkat output audio secara informatif."""
+        if not self.audio_player:
+            self.lbl_device_info.setText("Status: Layanan pemutar audio belum siap.")
+            return
+
+        mode = self.audio_player.get_output_mode()
+        curr_dev = self.audio_player.get_current_output_device()
+        active_desc = device_name or (curr_dev.description() if not curr_dev.isNull() else "Default Windows")
+
+        if mode == "auto":
+            self.lbl_device_info.setText(
+                f"ℹ️ Mode Otomatis Aktif: Suara saat ini mengalir ke '{active_desc}'. "
+                f"Ketika kabel jack 3,5 mm speaker eksternal dipasang, suara bel otomatis berpindah tanpa perlu restart aplikasi."
+            )
+        else:
+            self.lbl_device_info.setText(
+                f"🔒 Mode Manual Terkunci: Suara bel diarahkan khusus ke perangkat '{active_desc}'. "
+                f"Pilihan ini akan tetap dipertahankan sampai Anda mengganti perangkat atau memilih mode otomatis kembali."
+            )
+
+    def _test_audio_playback(self) -> None:
+        """
+        Memutar sampel suara bel melalui perangkat output audio yang dipilih.
+        Memverifikasi bahwa suara benar-benar berbunyi di speaker/headphone target.
+        """
         if not self.audio_player:
             QMessageBox.information(self, "Tes Suara", "Layanan pemutar audio tidak tersedia.")
             return
 
-        # Cari file audio pertama yang ada untuk pengujian
-        from src.database.repositories import AudioRepository
+        self.audio_player.refresh_audio_device()
+        curr_dev = self.audio_player.get_current_output_device()
+        dev_desc = curr_dev.description() if not curr_dev.isNull() else "Default Windows"
 
+        from src.database.repositories import AudioRepository
         audio_repo = AudioRepository(self.db)
         audios = audio_repo.get_all()
-        if not audios:
-            QMessageBox.information(
-                self,
-                "Tes Suara",
-                "Belum ada file audio bel di pustaka. Silakan impor file audio terlebih dahulu di menu Audio Bel.",
-            )
-            return
 
-        first_audio = audios[0]
-        if not Path(first_audio.stored_path).exists():
+        test_path: Optional[Path] = None
+        test_title: str = ""
+
+        for a in audios:
+            p = Path(a.stored_path)
+            if p.exists() and p.is_file():
+                test_path = p
+                test_title = a.name
+                break
+
+        if not test_path:
+            from src.core.config import get_assets_dir
+            for fallback_name in ("chime_default.wav", "bell_sample.wav", "bel_masuk.wav"):
+                p = get_assets_dir() / "sounds" / fallback_name
+                if p.exists() and p.is_file():
+                    test_path = p
+                    test_title = fallback_name
+                    break
+
+        if not test_path:
             QMessageBox.warning(
                 self,
                 "Tes Suara Gagal",
-                f"File fisik untuk '{first_audio.name}' tidak ditemukan di disk.",
+                "Tidak ditemukan berkas audio bel untuk pengujian. Silakan impor file audio terlebih dahulu di menu Audio Bel.",
             )
             return
 
-        self.audio_player.play(first_audio.stored_path, event_name=f"Tes Suara ({first_audio.name})")
+        success = self.audio_player.play_file(
+            test_path,
+            title=f"Tes Suara [{dev_desc}]",
+            interrupt=True,
+            mode="MANUAL",
+        )
+        if not success:
+            QMessageBox.warning(
+                self,
+                "Tes Suara Gagal",
+                f"Gagal memutar audio pengujian ke perangkat '{dev_desc}'. Periksa koneksi speaker atau volume sistem.",
+            )
+
+    def _test_audio_volume(self) -> None:
+        """Alias kompatibilitas untuk memutar pengujian suara bel."""
+        self._test_audio_playback()
 
     def _save_busy_policy(self, index: int) -> None:
         if self._is_loading:
@@ -435,7 +601,7 @@ class SettingsPage(QWidget):
             reply = QMessageBox.question(
                 self,
                 "Konfirmasi Startup Windows",
-                "Apakah Anda yakin ingin mengaktifkan Bel Otomatis Sekolah agar otomatis berjalan saat Windows dimulai?\n\n"
+                "Apakah Anda yakin ingin mengaktifkan KRONABEL agar otomatis berjalan saat Windows dimulai?\n\n"
                 "Catatan: Aplikasi hanya dapat membunyikan bel jika komputer menyala dan aktif.",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,

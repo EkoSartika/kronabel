@@ -126,6 +126,8 @@ def test_history_search_event_name(db_manager: DatabaseManager, sample_logs):
 def test_history_pagination_and_ui_loading(qapp, db_manager: DatabaseManager, sample_logs):
     """Uji 4: Pemuatan data riwayat dan paginasi pada UI."""
     page = HistoryPage(db_manager)
+    # Nonaktifkan filter tanggal agar seluruh sampel riwayat (lintas rentang waktu) terpapar
+    page.chk_date_filter.setChecked(False)
 
     # Hitung total
     total = page.log_repo.count_logs()

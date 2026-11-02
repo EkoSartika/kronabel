@@ -15,17 +15,30 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtMultimedia import QAudioOutput, QMediaDevices, QMediaPlayer
+from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaDevices, QMediaPlayer
 
 from src.core.config import get_assets_dir, get_audio_storage_dir
 from src.core.win7_compat import WinMMPlayer, is_windows_7_or_8
 from src.database.db import DatabaseManager
-from src.database.repositories import AudioRepository
+from src.database.repositories import AudioRepository, SettingsRepository
 from src.models.models import AudioFile
 
 logger = logging.getLogger(__name__)
 
 SUPPORTED_EXTENSIONS = {".mp3", ".wav"}
+
+
+def device_id_to_str(dev_id_or_device) -> str:
+    """Mengonversi ID QAudioDevice / QByteArray menjadi string yang konsisten."""
+    if dev_id_or_device is None:
+        return ""
+    if hasattr(dev_id_or_device, "id"):
+        dev_id_or_device = dev_id_or_device.id()
+    if hasattr(dev_id_or_device, "data"):
+        return dev_id_or_device.data().decode("utf-8", "ignore")
+    if isinstance(dev_id_or_device, (bytes, bytearray)):
+        return bytes(dev_id_or_device).decode("utf-8", "ignore")
+    return str(dev_id_or_device)
 
 
 class AudioStatus(str, Enum):
@@ -40,8 +53,9 @@ class AudioStatus(str, Enum):
 class AudioPlayer(QObject):
     """
     Pengelola Pemutaran Audio Terpusat (Single Active Audio Controller).
-    Menjamin maksimal hanya satu audio bel yang aktif pada satu waktu dan menangani
-    interupsi serta pembersihan status secara deterministik menggunakan ID sesi.
+    Menjamin maksimal hanya satu audio bel yang aktif pada satu waktu, menangani
+    interupsi serta pembersihan status secara deterministik menggunakan ID sesi,
+    serta mengelola perutean perangkat output audio secara dinamis (Speaker internal vs eksternal).
     """
 
     # Sinyal perubahan status
@@ -51,10 +65,15 @@ class AudioPlayer(QObject):
     playback_failed = Signal(str)          # error message
     playback_interrupted = Signal(str)     # interrupted title / reason
 
+    # Sinyal perangkat audio
+    audio_devices_changed = Signal()       # Terpanggil saat perangkat audio tersambung/terputus
+    audio_device_switched = Signal(str)    # Terpanggil saat perangkat aktif berpindah (nama perangkat)
+
     def __init__(self, db: DatabaseManager, parent: Optional[QObject] = None):
         super().__init__(parent)
         self.db = db
         self.audio_repo = AudioRepository(db)
+        self.settings_repo = SettingsRepository(db)
 
         self.status: AudioStatus = AudioStatus.IDLE
         self.current_title: str = ""
@@ -73,6 +92,19 @@ class AudioPlayer(QObject):
         self.audio_output = QAudioOutput(self)
         self.player.setAudioOutput(self.audio_output)
 
+        # Pengelolaan Perangkat Output Audio (QMediaDevices)
+        self.media_devices = QMediaDevices(self)
+        self.media_devices.audioOutputsChanged.connect(self._on_audio_outputs_changed)
+
+        # Konfigurasi mode output: "auto" (default Windows) atau "manual"
+        self.output_mode: str = "auto"
+        self.selected_device_id: str = ""
+        self.selected_device_name: str = ""
+        self._load_device_settings()
+
+        # Inisialisasi perangkat target pada QAudioOutput
+        self.refresh_audio_device()
+
         # Setup WinMM MCI Fallback
         self._winmm = WinMMPlayer()
         self._using_winmm = False
@@ -85,6 +117,163 @@ class AudioPlayer(QObject):
         # Hubungkan sinyal internal Qt Multimedia
         self.player.playbackStateChanged.connect(self._on_playback_state_changed)
         self.player.mediaStatusChanged.connect(self._on_media_status_changed)
+        self.player.errorOccurred.connect(self._on_error_occurred)
+
+    def _load_device_settings(self) -> None:
+        """Memuat preferensi perangkat output audio dari database."""
+        try:
+            self.output_mode = self.settings_repo.get("audio_output_mode", "auto")
+            self.selected_device_id = self.settings_repo.get("audio_output_device_id", "")
+            self.selected_device_name = self.settings_repo.get("audio_output_device_name", "")
+        except Exception as e:
+            logger.warning("Gagal memuat preferensi perangkat audio: %s", e)
+            self.output_mode = "auto"
+            self.selected_device_id = ""
+            self.selected_device_name = ""
+
+    def _on_audio_outputs_changed(self) -> None:
+        """Handler saat sistem mendeteksi penambahan atau pelepasan perangkat audio (misal jack 3,5 mm)."""
+        logger.info("Perubahan topologi perangkat output audio terdeteksi oleh QMediaDevices.")
+        self.refresh_audio_device()
+        self.audio_devices_changed.emit()
+
+    def get_available_output_devices(self) -> list[QAudioDevice]:
+        """Mengembalikan daftar seluruh perangkat output audio yang terdeteksi pada komputer."""
+        try:
+            return [d for d in QMediaDevices.audioOutputs() if not d.isNull()]
+        except Exception as e:
+            logger.warning("Gagal mengambil daftar audio output: %s", e)
+            return []
+
+    def get_default_output_device(self) -> QAudioDevice:
+        """Mengembalikan perangkat audio default Windows saat ini."""
+        try:
+            return QMediaDevices.defaultAudioOutput()
+        except Exception as e:
+            logger.warning("Gagal mengambil default audio output: %s", e)
+            return QAudioDevice()
+
+    def get_current_output_device(self) -> QAudioDevice:
+        """Mengembalikan objek QAudioDevice yang sedang aktif pada QAudioOutput."""
+        try:
+            return self.audio_output.device()
+        except Exception as e:
+            logger.warning("Gagal membaca device aktif: %s", e)
+            return QAudioDevice()
+
+    def get_output_mode(self) -> str:
+        """Mengembalikan mode output ('auto' atau 'manual')."""
+        return self.output_mode
+
+    def get_selected_device_id(self) -> str:
+        """Mengembalikan ID unik perangkat terpilih jika dalam mode manual."""
+        return self.selected_device_id
+
+    def get_selected_device_name(self) -> str:
+        """Mengembalikan nama deskriptif perangkat terpilih jika dalam mode manual."""
+        return self.selected_device_name
+
+    def _matches_device(self, dev: QAudioDevice, target_id: str, target_name: str = "") -> bool:
+        """Memeriksa apakah QAudioDevice cocok dengan ID atau nama yang dicari."""
+        if dev.isNull():
+            return False
+        dev_id_str = device_id_to_str(dev)
+        if target_id and dev_id_str == target_id:
+            return True
+        if target_name and dev.description().strip() == target_name.strip():
+            return True
+        return False
+
+    def set_output_mode(
+        self,
+        mode: str,
+        device_id: Optional[str] = None,
+        device_name: Optional[str] = None,
+    ) -> bool:
+        """
+        Mengatur preferensi perutean perangkat audio:
+        - mode='auto': Otomatis mengikuti output Windows (default), berpindah dinamis saat jack dicolok/dilepas.
+        - mode='manual': Mengunci audio ke perangkat fisik tertentu.
+        """
+        self.output_mode = "manual" if mode == "manual" else "auto"
+        if self.output_mode == "manual":
+            self.selected_device_id = device_id or ""
+            if not device_name and self.selected_device_id:
+                for dev in self.get_available_output_devices():
+                    if device_id_to_str(dev) == self.selected_device_id:
+                        device_name = dev.description()
+                        break
+            self.selected_device_name = device_name or ""
+        else:
+            self.selected_device_id = ""
+            self.selected_device_name = ""
+
+        try:
+            self.settings_repo.set("audio_output_mode", self.output_mode)
+            self.settings_repo.set("audio_output_device_id", self.selected_device_id)
+            self.settings_repo.set("audio_output_device_name", self.selected_device_name)
+        except Exception as e:
+            logger.warning("Gagal menyimpan preferensi perangkat audio: %s", e)
+
+        result = self.refresh_audio_device()
+        self.audio_devices_changed.emit()
+        return result
+
+    def refresh_audio_device(self) -> bool:
+        """
+        Memeriksa dan memperbarui perangkat output pada QAudioOutput secara aman tanpa merusak pemutar:
+        - Mode 'auto': Selalu menyelaraskan diri dengan default Windows terkini.
+        - Mode 'manual': Mencari perangkat target; jika perangkat dilepas/hilang,
+          jatuh ke default Windows sebagai fallback sementara tanpa menghapus preferensi tersimpan.
+        """
+        try:
+            available = self.get_available_output_devices()
+            if not available:
+                logger.warning("Tidak ada perangkat output audio yang terdeteksi.")
+                return False
+
+            target_device: Optional[QAudioDevice] = None
+
+            if self.output_mode == "manual" and (self.selected_device_id or self.selected_device_name):
+                for dev in available:
+                    if self._matches_device(dev, self.selected_device_id, self.selected_device_name):
+                        target_device = dev
+                        break
+                if not target_device:
+                    logger.warning(
+                        "Perangkat output audio manual '%s' (%s) tidak ditemukan dalam daftar aktif. "
+                        "Menggunakan default output Windows sebagai fallback sementara.",
+                        self.selected_device_name,
+                        self.selected_device_id,
+                    )
+                    target_device = self.get_default_output_device()
+            else:
+                target_device = self.get_default_output_device()
+
+            if not target_device or target_device.isNull():
+                target_device = available[0]
+
+            current_device = self.audio_output.device()
+            current_id = device_id_to_str(current_device)
+            target_id = device_id_to_str(target_device)
+
+            if current_device.isNull() or current_id != target_id:
+                logger.info(
+                    "Peralihan perangkat audio: '%s' -> '%s' (mode=%s)",
+                    current_device.description() if not current_device.isNull() else "None",
+                    target_device.description(),
+                    self.output_mode,
+                )
+                curr_vol = self.audio_output.volume()
+                self.audio_output.setDevice(target_device)
+                self.audio_output.setVolume(curr_vol)
+                self.audio_device_switched.emit(target_device.description())
+                return True
+
+            return True
+        except Exception as e:
+            logger.error("Terjadi kesalahan saat memperbarui perangkat audio output: %s", e)
+            return False
         self.player.errorOccurred.connect(self._on_error_occurred)
 
     def _set_status(self, new_status: AudioStatus, message: str = "") -> None:
@@ -148,7 +337,7 @@ class AudioPlayer(QObject):
     def has_audio_output_device(self) -> bool:
         """Memeriksa ketersediaan perangkat output audio pada komputer Windows."""
         try:
-            devices = QMediaDevices.audioOutputs()
+            devices = self.get_available_output_devices()
             return len(devices) > 0
         except Exception as e:
             logger.warning("Gagal memeriksa perangkat audio: %s", e)
@@ -237,6 +426,10 @@ class AudioPlayer(QObject):
           audio sebelumnya langsung dihentikan secara bersih sebelum audio baru dimainkan dari awal.
         - Jika `interrupt=False`: menolak pemutaran baru apabila pemutar masih aktif.
         """
+        # Pastikan perangkat output audio tersinkronisasi sebelum pemutaran
+        # (misalnya kabel jack speaker eksternal baru saja dicolokkan)
+        self.refresh_audio_device()
+
         if self.is_playing():
             if not interrupt:
                 logger.warning(

@@ -30,7 +30,7 @@ def test_main_window_initialization(qapp, temp_db: DatabaseManager):
     """Memastikan jendela utama dapat dibuat sebagai panel kompak dengan komponen lengkap."""
     window = MainWindow(temp_db)
     assert window is not None
-    assert "Bel Otomatis Sekolah" in window.windowTitle()
+    assert "KRONABEL" in window.windowTitle()
     assert window.width() <= 750
     assert window.height() <= 400
     assert window.clock_label is not None

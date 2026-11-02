@@ -177,15 +177,14 @@ class MainWindow(QMainWindow):
         left_layout.setContentsMargins(14, 10, 14, 10)
         left_layout.setSpacing(8)
 
-        # A. Header Kiri: Nama App & Profil Aktif
-        header_bar = QHBoxLayout()
-        header_bar.setContentsMargins(0, 0, 0, 0)
-        header_bar.setSpacing(10)
+        # A. Header Kiri: Nama App (Terpusat Horizontal Sejajar Jam Digital) & Profil Aktif
+        header_layout = QGridLayout()
+        header_layout.setContentsMargins(0, 0, 0, 0)
+        header_layout.setSpacing(0)
 
-        self.app_title = QLabel("BEL SEKOLAH OTOMATIS")
-        self.app_title.setStyleSheet("font-size: 15px; font-weight: 900; color: #0b3b2d; border: none; letter-spacing: 0.6px;")
-        header_bar.addWidget(self.app_title)
-        header_bar.addStretch()
+        self.app_title = QLabel("KRONABEL")
+        self.app_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.app_title.setStyleSheet("font-size: 15px; font-weight: 900; color: #0b3b2d; border: none; letter-spacing: 0.6px; background: transparent;")
 
         self.profile_badge = QLabel("Profil: Reguler")
         self.profile_badge.setFixedHeight(26)
@@ -198,9 +197,14 @@ class MainWindow(QMainWindow):
             border-radius: 13px;
             border: 1.5px solid #ca8a04;
         """)
-        header_bar.addWidget(self.profile_badge)
 
-        left_layout.addLayout(header_bar)
+        # Tempatkan tulisan KRONABEL di tengah horizontal sempurna (kolom 0 span 3),
+        # sehingga berada persis satu garis horizontal dengan pusat jam digital di bawahnya.
+        # Profil badge disematkan di pojok kanan (kolom 2) tanpa menggeser pusat judul.
+        header_layout.addWidget(self.app_title, 0, 0, 1, 3, Qt.AlignmentFlag.AlignCenter)
+        header_layout.addWidget(self.profile_badge, 0, 2, 1, 1, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+
+        left_layout.addLayout(header_layout)
 
         # B. Jam Digital Besar & Tanggal (Latar Lanskap Gunung & Pendopo Sumedang Emas / Custom)
         clock_box = QFrame()
